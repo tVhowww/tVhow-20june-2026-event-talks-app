@@ -110,6 +110,14 @@ function setupEventListeners() {
         const twitterUrl = `https://x.com/intent/tweet?text=${text}`;
         window.open(twitterUrl, '_blank', 'width=550,height=420');
     });
+
+    // Export CSV Button
+    const exportCsvBtn = document.getElementById('export-csv-btn');
+    if (exportCsvBtn) {
+        exportCsvBtn.addEventListener('click', () => {
+            exportFilteredToCSV();
+        });
+    }
 }
 
 // Fetch Release Notes from API
@@ -249,6 +257,9 @@ function renderFeed() {
                             ${update.html}
                         </div>
                         <div class="update-actions">
+                            <button class="btn-tweet-trigger btn-copy-card" style="border-color: rgba(255, 255, 255, 0.15); color: var(--text-secondary);" onclick="copyCardToClipboard(this, '${entry.date}', '${update.type}', ${JSON.stringify(update.text).replace(/"/g, '&quot;')}, '${entry.link}')">
+                                <i data-lucide="copy"></i> Copy Note
+                            </button>
                             <button class="btn-tweet-trigger" onclick="openTweetComposer('${entry.date}', '${update.type}', ${JSON.stringify(update.text).replace(/"/g, '&quot;')}, '${entry.link}')">
                                 <i data-lucide="twitter"></i> Tweet This
                             </button>
@@ -371,4 +382,75 @@ function updateCharCount(text) {
         charCounter.className = 'char-count';
         publishBtn.disabled = false;
     }
+}
+
+// Copy update details to clipboard
+function copyCardToClipboard(btn, date, type, text, link) {
+    const formatText = `BigQuery [${type}] (${date}):\n${text}\n\nDetails: ${link}`;
+    navigator.clipboard.writeText(formatText).then(() => {
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = `<i data-lucide="check"></i> Copied!`;
+        btn.style.color = 'var(--color-feature)';
+        btn.style.borderColor = 'var(--color-feature)';
+        lucide.createIcons();
+
+        setTimeout(() => {
+            btn.innerHTML = originalHtml;
+            btn.style.color = 'var(--text-secondary)';
+            btn.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+            lucide.createIcons();
+        }, 2000);
+    }).catch(err => {
+        console.error('Could not copy card content: ', err);
+    });
+}
+
+// Export currently filtered list to CSV
+function exportFilteredToCSV() {
+    const headers = ["Date", "Type", "Description", "Link"];
+    const rows = [headers];
+
+    releaseNotes.forEach(entry => {
+        const filteredUpdates = entry.updates.filter(update => {
+            const typeLower = update.type.toLowerCase();
+            if (currentFilter !== 'all') {
+                if (currentFilter === 'issue' && !typeLower.includes('issue') && !typeLower.includes('fix')) return false;
+                if (currentFilter === 'feature' && !typeLower.includes('feature')) return false;
+                if (currentFilter === 'announcement' && !typeLower.includes('announcement')) return false;
+                if (currentFilter === 'deprecated' && !typeLower.includes('deprecat')) return false;
+            }
+            if (searchQuery) {
+                const typeMatches = update.type.toLowerCase().includes(searchQuery);
+                const textMatches = update.text.toLowerCase().includes(searchQuery);
+                if (!typeMatches && !textMatches) return false;
+            }
+            return true;
+        });
+
+        filteredUpdates.forEach(update => {
+            // Escape double quotes inside the text field
+            const cleanText = update.text.replace(/"/g, '""');
+            rows.push([
+                `"${entry.date}"`,
+                `"${update.type}"`,
+                `"${cleanText}"`,
+                `"${entry.link}"`
+            ]);
+        });
+    });
+
+    if (rows.length <= 1) {
+        alert("No release notes found to export.");
+        return;
+    }
+
+    const csvString = rows.map(e => e.join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `bigquery_release_notes_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }

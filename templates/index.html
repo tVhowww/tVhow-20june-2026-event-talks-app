@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigQuery Release Notes Explorer & Tweeter</title>
+    
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons (CDN) for modern, clean icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Core Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-icon">
+                    <i data-lucide="database" class="icon-primary"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>BQ Pulse</h1>
+                    <span>BigQuery Release Hub</span>
+                </div>
+            </div>
+            
+            <div class="nav-section">
+                <h3>Views</h3>
+                <nav>
+                    <button class="nav-btn active" id="view-feed-btn">
+                        <i data-lucide="rss"></i> Release Feed
+                    </button>
+                </nav>
+            </div>
+
+            <div class="nav-section">
+                <h3>Quick Filters</h3>
+                <div class="filter-group">
+                    <button class="filter-chip active" data-filter="all">
+                        <span class="dot all"></span> All Notes
+                    </button>
+                    <button class="filter-chip" data-filter="feature">
+                        <span class="dot feature"></span> Features
+                    </button>
+                    <button class="filter-chip" data-filter="announcement">
+                        <span class="dot announcement"></span> Announcements
+                    </button>
+                    <button class="filter-chip" data-filter="issue">
+                        <span class="dot issue"></span> Issues & Fixes
+                    </button>
+                    <button class="filter-chip" data-filter="deprecated">
+                        <span class="dot deprecated"></span> Deprecations
+                    </button>
+                </div>
+            </div>
+
+            <!-- Footer of Sidebar -->
+            <div class="sidebar-footer">
+                <div class="system-status">
+                    <span class="status-indicator online"></span>
+                    <span class="status-text">Connected</span>
+                </div>
+                <div class="last-fetch-time" id="last-updated-time">
+                    Last updated: Just now
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="search-bar-container">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="search-input" placeholder="Search release updates (e.g. Gemini, partition, embedding)..." autocomplete="off">
+                </div>
+                
+                <div class="header-actions">
+                    <button id="refresh-btn" class="btn btn-secondary" title="Fetch latest releases">
+                        <i data-lucide="refresh-cw" class="btn-spinner"></i>
+                        <span>Refresh Feed</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Scrollable Feed Content -->
+            <section class="feed-viewport">
+                <!-- Status Bar / Banner -->
+                <div class="feed-banner" id="feed-banner" style="display: none;">
+                    <div class="banner-content">
+                        <i data-lucide="info" class="banner-icon"></i>
+                        <span id="banner-message">Viewing cached updates.</span>
+                    </div>
+                </div>
+
+                <!-- Feed Loader -->
+                <div class="feed-loader-container" id="feed-loader">
+                    <div class="neon-spinner"></div>
+                    <p>Scanning BigQuery Release Feed...</p>
+                </div>
+
+                <!-- Feed Container -->
+                <div class="feed-container" id="feed-container" style="display: none;">
+                    <!-- Cards will be dynamically rendered here -->
+                </div>
+
+                <!-- Empty State -->
+                <div class="empty-state-container" id="empty-state" style="display: none;">
+                    <div class="empty-icon">
+                        <i data-lucide="search-x"></i>
+                    </div>
+                    <h2>No updates match your search</h2>
+                    <p>Try adjusting your search text or filters to find what you're looking for.</p>
+                    <button id="clear-search-btn" class="btn btn-primary">Clear Filters</button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Slide-over Tweet Composer Modal -->
+        <div class="tweet-modal-overlay" id="tweet-modal">
+            <div class="tweet-modal-container">
+                <div class="modal-header">
+                    <div class="modal-title">
+                        <i data-lucide="twitter" class="twitter-icon"></i>
+                        <h2>Tweet Composer</h2>
+                    </div>
+                    <button class="btn-close" id="close-modal-btn">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="selected-update-preview">
+                        <span class="preview-badge" id="preview-update-type">Feature</span>
+                        <span class="preview-date" id="preview-update-date">June 17, 2026</span>
+                        <div class="preview-body" id="preview-update-body">
+                            Loading update details...
+                        </div>
+                    </div>
+
+                    <div class="composer-container">
+                        <label for="tweet-textarea">Craft your Tweet</label>
+                        <textarea id="tweet-textarea" placeholder="What's happening?" rows="6"></textarea>
+                        
+                        <div class="composer-meta">
+                            <div class="character-counter-container">
+                                <svg class="progress-ring" width="36" height="36">
+                                    <circle class="progress-ring__circle-bg" stroke="#252D47" stroke-width="3" fill="transparent" r="15" cx="18" cy="18"/>
+                                    <circle class="progress-ring__circle" stroke="#3B82F6" stroke-width="3.5" fill="transparent" r="15" cx="18" cy="18"/>
+                                </svg>
+                                <span class="char-count" id="char-count">280</span>
+                            </div>
+                            
+                            <div class="composer-actions">
+                                <button class="btn btn-icon btn-secondary" id="copy-tweet-btn" title="Copy tweet content">
+                                    <i data-lucide="copy"></i>
+                                    <span>Copy Text</span>
+                                </button>
+                                <button class="btn btn-primary btn-tweet" id="publish-tweet-btn">
+                                    <i data-lucide="send"></i>
+                                    <span>Post on X</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main JavaScript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

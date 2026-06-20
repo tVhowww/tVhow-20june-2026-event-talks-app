@@ -11,9 +11,10 @@ const circumference = radius * 2 * Math.PI;
 circle.style.strokeDasharray = `${circumference} ${circumference}`;
 circle.style.strokeDashoffset = circumference;
 
-// Initialize lucide icons
+// Initialize theme and load icons
 document.addEventListener('DOMContentLoaded', () => {
-    lucide.createIcons();
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
     fetchReleases();
     setupEventListeners();
 });
@@ -116,6 +117,16 @@ function setupEventListeners() {
     if (exportCsvBtn) {
         exportCsvBtn.addEventListener('click', () => {
             exportFilteredToCSV();
+        });
+    }
+
+    // Theme Toggle Button
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            setTheme(newTheme);
         });
     }
 }
@@ -453,4 +464,23 @@ function exportFilteredToCSV() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+// Set application color scheme theme
+function setTheme(theme) {
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    if (theme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('theme', 'light');
+        if (themeToggleBtn) {
+            themeToggleBtn.innerHTML = `<i data-lucide="moon"></i> <span>Dark Mode</span>`;
+        }
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'dark');
+        if (themeToggleBtn) {
+            themeToggleBtn.innerHTML = `<i data-lucide="sun"></i> <span>Light Mode</span>`;
+        }
+    }
+    lucide.createIcons();
 }

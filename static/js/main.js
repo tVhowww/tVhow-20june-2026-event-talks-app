@@ -1,6 +1,6 @@
 // State variables
 let releaseNotes = [];
-let currentFilter = 'all';
+let activeFilters = new Set(['all']);
 let searchQuery = '';
 
 // SVG Progress Ring calculations
@@ -44,18 +44,48 @@ function setupEventListeners() {
         document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
         const allChip = document.querySelector('.filter-chip[data-filter="all"]');
         if (allChip) allChip.classList.add('active');
-        currentFilter = 'all';
+        activeFilters = new Set(['all']);
 
         renderFeed();
     });
 
-    // Category filter chips
+    // Category filter chips (Multi-select)
     const filterChips = document.querySelectorAll('.filter-chip');
     filterChips.forEach(chip => {
         chip.addEventListener('click', () => {
-            filterChips.forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            currentFilter = chip.getAttribute('data-filter');
+            const filter = chip.getAttribute('data-filter');
+            
+            if (filter === 'all') {
+                // If "All" clicked, clear others and select "All"
+                activeFilters.clear();
+                activeFilters.add('all');
+                filterChips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+            } else {
+                // If a specific filter is clicked
+                if (activeFilters.has('all')) {
+                    // Remove "All" if it was active
+                    activeFilters.delete('all');
+                    const allChip = document.querySelector('.filter-chip[data-filter="all"]');
+                    if (allChip) allChip.classList.remove('active');
+                }
+                
+                // Toggle the filter
+                if (activeFilters.has(filter)) {
+                    activeFilters.delete(filter);
+                    chip.classList.remove('active');
+                } else {
+                    activeFilters.add(filter);
+                    chip.classList.add('active');
+                }
+                
+                // If no filters are active now, default back to "All"
+                if (activeFilters.size === 0) {
+                    activeFilters.add('all');
+                    const allChip = document.querySelector('.filter-chip[data-filter="all"]');
+                    if (allChip) allChip.classList.add('active');
+                }
+            }
             renderFeed();
         });
     });
@@ -227,13 +257,16 @@ function renderFeed() {
     releaseNotes.forEach(entry => {
         // Filter updates inside this day
         const filteredUpdates = entry.updates.filter(update => {
-            // Category check
+            // Category check (Multi-select)
             const typeLower = update.type.toLowerCase();
-            if (currentFilter !== 'all') {
-                if (currentFilter === 'issue' && !typeLower.includes('issue') && !typeLower.includes('fix')) return false;
-                if (currentFilter === 'feature' && !typeLower.includes('feature')) return false;
-                if (currentFilter === 'announcement' && !typeLower.includes('announcement')) return false;
-                if (currentFilter === 'deprecated' && !typeLower.includes('deprecat')) return false;
+            if (!activeFilters.has('all')) {
+                let matchesCategory = false;
+                if (activeFilters.has('feature') && typeLower.includes('feature')) matchesCategory = true;
+                if (activeFilters.has('announcement') && typeLower.includes('announcement')) matchesCategory = true;
+                if (activeFilters.has('issue') && (typeLower.includes('issue') || typeLower.includes('fix'))) matchesCategory = true;
+                if (activeFilters.has('deprecated') && typeLower.includes('deprecat')) matchesCategory = true;
+                
+                if (!matchesCategory) return false;
             }
 
             // Search text check
@@ -424,11 +457,14 @@ function exportFilteredToCSV() {
     releaseNotes.forEach(entry => {
         const filteredUpdates = entry.updates.filter(update => {
             const typeLower = update.type.toLowerCase();
-            if (currentFilter !== 'all') {
-                if (currentFilter === 'issue' && !typeLower.includes('issue') && !typeLower.includes('fix')) return false;
-                if (currentFilter === 'feature' && !typeLower.includes('feature')) return false;
-                if (currentFilter === 'announcement' && !typeLower.includes('announcement')) return false;
-                if (currentFilter === 'deprecated' && !typeLower.includes('deprecat')) return false;
+            if (!activeFilters.has('all')) {
+                let matchesCategory = false;
+                if (activeFilters.has('feature') && typeLower.includes('feature')) matchesCategory = true;
+                if (activeFilters.has('announcement') && typeLower.includes('announcement')) matchesCategory = true;
+                if (activeFilters.has('issue') && (typeLower.includes('issue') || typeLower.includes('fix'))) matchesCategory = true;
+                if (activeFilters.has('deprecated') && typeLower.includes('deprecat')) matchesCategory = true;
+                
+                if (!matchesCategory) return false;
             }
             if (searchQuery) {
                 const typeMatches = update.type.toLowerCase().includes(searchQuery);
